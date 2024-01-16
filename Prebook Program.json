@@ -1,1 +1,161 @@
-{"files":[{"id":"9b5a9f57-ce6a-4e7a-b96e-16aa33f4c140","name":"appsscript","type":"json","source":"{\n  \"timeZone\": \"America/Chicago\",\n  \"dependencies\": {\n    \"enabledAdvancedServices\": [\n      {\n        \"userSymbol\": \"Drive\",\n        \"version\": \"v3\",\n        \"serviceId\": \"drive\"\n      }\n    ]\n  },\n  \"exceptionLogging\": \"STACKDRIVER\",\n  \"runtimeVersion\": \"V8\"\n}"},{"id":"65c299b0-08c8-498e-8904-b667bd796fa5","name":"Code","type":"server_js","source":"function myFunction() {\n  var folder \u003d DriveApp.getFolderById(\u00271nTdhCsdEKZmS8QBucbLdZurHCmdJV3Ra\u0027);  // Manually enter folder ID\n  var files \u003d folder.getFilesByType(MimeType.PDF);\n  \n  var sheetID \u003d \u00271p1JJod23yidCAH-5wGkQnmcna2jj27oJE2Vh7tI57Ec\u0027;  // Manually enter sheet ID\n  var spreadSheet \u003d SpreadsheetApp.openById(sheetID);\n  var sheet2 \u003d spreadSheet.getSheetByName(\u0027Sheet2\u0027);\n  sheet2.clear();\n\n  while (files.hasNext()){\n    var file \u003d files.next();\n    var blob \u003d file.getBlob();\n    var resource \u003d {\n      title: file.getName(),\n      mimeType: MimeType.GOOGLE_DOCS\n    };\n    var newDoc \u003d Drive.Files.create(resource, blob);\n    var newDocId \u003d newDoc.id;\n    dataTransfer(newDocId,sheetID)\n    splitText(sheetID)\n  }\n\n}\n\nfunction dataTransfer(docID, sheetID){\n\n  var doc \u003d DocumentApp.openById(docID);\n  var text \u003d doc.getBody().getText();\n\n  //var lineSplit \u003d \u0027STORE 0415\u0027\n  var lineSplit \u003d \u0027\\n\u0027\n  var lines \u003d text.split(lineSplit);\n\n  var sheet \u003d SpreadsheetApp.openById(sheetID).getActiveSheet();\n  sheet.clear()\n  \n  sheet.getRange(1, 1).setValue(lines.length) + 1;\n\n  for (var i \u003d 0; i \u003c lines.length; i++){\n    sheet.getRange(i + 2, 1).setValue(lines[i].trimStart());\n  }\n  // sheet.getRange(2, 1, lines.length + 1, 1).setValues([lines]);\n}\n\nfunction splitText(sheetID){\n\n  // Get the spreadsheet to store in a var along with the two main sheets stored in seperate var.\n  var spreadSheet \u003d SpreadsheetApp.openById(sheetID);\n  var sheet \u003d spreadSheet.getSheetByName(\u0027Sheet1\u0027);\n  var sheet2 \u003d spreadSheet.getSheetByName(\u0027Sheet2\u0027);\n\n  //Clears the sheet for new data\n  sheet2.getRange(\u0027A1\u0027).setValue(\"QTY ORD\")\n  sheet2.getRange(\u0027B1\u0027).setValue(\"QTY SHP\")\n  sheet2.getRange(\u0027C1\u0027).setValue(\"Item Code\")\n  sheet2.getRange(\u0027D1\u0027).setValue(\"Description\")\n  sheet2.getRange(\u0027E1\u0027).setValue(\"Size\")\n  sheet2.getRange(\u0027F1\u0027).setValue(\"UPC\")\n  sheet2.getRange(\u0027G1\u0027).setValue(\"Pack Sz\")\n  sheet2.getRange(\u0027H1\u0027).setValue(\"Total Cost\")\n  sheet2.getRange(\u0027I1\u0027).setValue(\"PB\")\n\n  //Gets the length of the rows previous stored in the A1 cell.\n  var sheetLength \u003d sheet.getRange(1,1).getValue();\n  \n  //sheet2Row will the row count for sheet two.\n  var sheet2Row \u003d 2;\n  while (sheet2.getRange(sheet2Row, 1).getValue() !\u003d\u003d \u0027\u0027){\n    sheet2Row++;\n  }\n    \n\n  //Skipping the first row, loops through each row\n  for (var i \u003d 2; i \u003c sheetLength + 2; i++){\n\n    //Stores the cell in a var\n    var cellValue \u003d sheet.getRange(i, 1).getValue();\n\n    //Splitting the text in the cell and storing them onto sheet 2.\n    var splitString \u003d \u0027 \u0027;\n    var splitValue \u003d cellValue.split(splitString);\n    \n    for (var k \u003d 0; k + 3 \u003c splitValue.length; k++){\n      if (itemStartCheck(splitValue, k)){\n        sheet2.getRange(sheet2Row, 1).setValue(splitValue[k]);                    //Ordered QTY\n        sheet2.getRange(sheet2Row, 2).setValue(splitValue[k + 1]);                //Delivered QTY\n        sheet2.getRange(sheet2Row, 3).setValue(splitValue[k + 2].split(\u0027-\u0027)[1]);  //Pastes item code\n        var itemName \u003d findName(splitValue, k + 3);                               //Finds the name\n        k \u003d itemName[1];\n        sheet2.getRange(sheet2Row, 4).setValue(itemName[0]);\n\n        //Pastes the product name and size. Determines if the second to last section before UPC\n        //is part of the name or part of the size.\n        sheet2.getRange(sheet2Row, 6).setValue(splitValue[k]);                    //Paste UPC\n\n        if (sheet2.getRange(sheet2Row, 2).getValue() \u003d\u003d\u003d 0){\n          var itemName \u003d findNameForOuts(splitValue, k + 1);\n          k \u003d itemName[1]\n          sheet2.getRange(sheet2Row, 7).setValue(itemName[0]);\n        } else {\n          sheet2.getRange(sheet2Row, 7).setValue(splitValue[k + 6]);  // Pack Size\n          sheet2.getRange(sheet2Row, 8).setValue(splitValue[k + 7]);  //Total Value\n          if (splitValue[k + 9] \u003d\u003d (\"PB\"))\n            sheet2.getRange(sheet2Row, 9).setValue(splitValue[k + 9]); // PB Check\n        }\n        sheet2Row++;\n        k \u003d k + 3;\n      }\n    }\n    //sheet2.getRange(i - 1, 1, 1, splitValue.length).setValues([splitValue]);\n  }\n}\nfunction findNameForOuts(currentString, i){\n  //This will check how long the name is by finding the first section of the sentence that starts with zero.\n  //This hasn\u0027t been hard test but if need be I can add a second zero. I haven\u0027t seen a UPC that fills the entire \n  //section with whole numbers.\n  //Returning the i and j will establish the locations of the string on the array.\n  var name \u003d currentString[i]\n  for (var j \u003d i + 1; j \u003c currentString.length; j++){\n    if (containsNumber(currentString[j])){\n      return [name, j];\n    }\n    name \u003d name + \u0027 \u0027 + currentString[j];\n  }\n  return [name, j];\n}\nfunction findName(currentString, i){\n  //This will check how long the name is by finding the first section of the sentence that starts with zero.\n  //This hasn\u0027t been hard test but if need be I can add a second zero. I haven\u0027t seen a UPC that fills the entire \n  //section with whole numbers.\n  //Returning the i and j will establish the locations of the string on the array.\n  var name \u003d currentString[i]\n  for (var i \u003d i + 1; i \u003c\u003d currentString.length; i++){\n    if (currentString[i].charAt(0) \u003d\u003d\u003d \u00270\u0027 \u0026\u0026 currentString[i].charAt(1) \u003d\u003d\u003d \u00270\u0027){\n      return [name, i];\n    }\n    name \u003d name + \u0027 \u0027 + currentString[i];\n  }\n}\n\nfunction itemStartCheck(currentString, i){\n  if (currentString.length \u003c\u003d i + 3){return false;}         //Checks if the string ends before the word can start\n  if (containsLetter(currentString[i])){return false;}      //First number should be a number\n  if (containsLetter(currentString[i + 1])){return false;}  //Second number should be a number\n  if (containsNumber(currentString[i + 2].charAt(0))){\n    if (currentString[i + 2].charAt(2) \u003d\u003d\u003d \u0027-\u0027 || currentString[i + 2].charAt(1) \u003d\u003d\u003d \u0027-\u0027){\n      return true;                                           //Third sections should have a dash as the third or second character.\n    }\n  }\n  return false;\n}\n\nfunction containsNumber(str) {\n  if (str \u003d\u003d\u003d \u0027\u0027){return false;}\n  return /\\d/.test(str); // Returns true if string contains a digit\n}\n\nfunction containsLetter(str) {\n  if (str \u003d\u003d\u003d \u0027\u0027){return false;}\n  return /[a-zA-Z]/.test(str); // Returns true if string contains a letter\n}"}]}
+function myFunction() {
+  var folder = DriveApp.getFolderById('');  // Manually enter folder ID
+  var files = folder.getFilesByType(MimeType.PDF);
+  
+  var sheetID = '';  // Manually enter sheet ID
+  var spreadSheet = SpreadsheetApp.openById(sheetID);
+  var sheet2 = spreadSheet.getSheetByName('Sheet2');
+  sheet2.clear();
+
+  while (files.hasNext()){
+    var file = files.next();
+    var blob = file.getBlob();
+    var resource = {
+      title: file.getName(),
+      mimeType: MimeType.GOOGLE_DOCS
+    };
+    var newDoc = Drive.Files.create(resource, blob);
+    var newDocId = newDoc.id;
+    dataTransfer(newDocId,sheetID)
+    splitText(sheetID)
+  }
+
+}
+
+function dataTransfer(docID, sheetID){
+
+  var doc = DocumentApp.openById(docID);
+  var text = doc.getBody().getText();
+
+  //var lineSplit = 'STORE 0415'
+  var lineSplit = '\n'
+  var lines = text.split(lineSplit);
+
+  var sheet = SpreadsheetApp.openById(sheetID).getActiveSheet();
+  sheet.clear()
+  
+  sheet.getRange(1, 1).setValue(lines.length) + 1;
+
+  for (var i = 0; i < lines.length; i++){
+    sheet.getRange(i + 2, 1).setValue(lines[i].trimStart());
+  }
+  // sheet.getRange(2, 1, lines.length + 1, 1).setValues([lines]);
+}
+
+function splitText(sheetID){
+
+  // Get the spreadsheet to store in a var along with the two main sheets stored in seperate var.
+  var spreadSheet = SpreadsheetApp.openById(sheetID);
+  var sheet = spreadSheet.getSheetByName('Sheet1');
+  var sheet2 = spreadSheet.getSheetByName('Sheet2');
+
+  //Clears the sheet for new data
+  sheet2.getRange('A1').setValue("QTY ORD")
+  sheet2.getRange('B1').setValue("QTY SHP")
+  sheet2.getRange('C1').setValue("Item Code")
+  sheet2.getRange('D1').setValue("Description")
+  sheet2.getRange('E1').setValue("Size")
+  sheet2.getRange('F1').setValue("UPC")
+  sheet2.getRange('G1').setValue("Pack Sz")
+  sheet2.getRange('H1').setValue("Total Cost")
+  sheet2.getRange('I1').setValue("PB")
+
+  //Gets the length of the rows previous stored in the A1 cell.
+  var sheetLength = sheet.getRange(1,1).getValue();
+  
+  //sheet2Row will the row count for sheet two.
+  var sheet2Row = 2;
+  while (sheet2.getRange(sheet2Row, 1).getValue() !== ''){
+    sheet2Row++;
+  }
+    
+
+  //Skipping the first row, loops through each row
+  for (var i = 2; i < sheetLength + 2; i++){
+
+    //Stores the cell in a var
+    var cellValue = sheet.getRange(i, 1).getValue();
+
+    //Splitting the text in the cell and storing them onto sheet 2.
+    var splitString = ' ';
+    var splitValue = cellValue.split(splitString);
+    
+    for (var k = 0; k + 3 < splitValue.length; k++){
+      if (itemStartCheck(splitValue, k)){
+        sheet2.getRange(sheet2Row, 1).setValue(splitValue[k]);                    //Ordered QTY
+        sheet2.getRange(sheet2Row, 2).setValue(splitValue[k + 1]);                //Delivered QTY
+        sheet2.getRange(sheet2Row, 3).setValue(splitValue[k + 2].split('-')[1]);  //Pastes item code
+        var itemName = findName(splitValue, k + 3);                               //Finds the name
+        k = itemName[1];
+        sheet2.getRange(sheet2Row, 4).setValue(itemName[0]);
+
+        //Pastes the product name and size. Determines if the second to last section before UPC
+        //is part of the name or part of the size.
+        sheet2.getRange(sheet2Row, 6).setValue(splitValue[k]);                    //Paste UPC
+
+        if (sheet2.getRange(sheet2Row, 2).getValue() === 0){
+          var itemName = findNameForOuts(splitValue, k + 1);
+          k = itemName[1]
+          sheet2.getRange(sheet2Row, 7).setValue(itemName[0]);
+        } else {
+          sheet2.getRange(sheet2Row, 7).setValue(splitValue[k + 6]);  // Pack Size
+          sheet2.getRange(sheet2Row, 8).setValue(splitValue[k + 7]);  //Total Value
+          if (splitValue[k + 9] == ("PB"))
+            sheet2.getRange(sheet2Row, 9).setValue(splitValue[k + 9]); // PB Check
+        }
+        sheet2Row++;
+        k = k + 3;
+      }
+    }
+    //sheet2.getRange(i - 1, 1, 1, splitValue.length).setValues([splitValue]);
+  }
+}
+function findNameForOuts(currentString, i){
+  //This will check how long the name is by finding the first section of the sentence that starts with zero.
+  //This hasn't been hard test but if need be I can add a second zero. I haven't seen a UPC that fills the entire 
+  //section with whole numbers.
+  //Returning the i and j will establish the locations of the string on the array.
+  var name = currentString[i]
+  for (var j = i + 1; j < currentString.length; j++){
+    if (containsNumber(currentString[j])){
+      return [name, j];
+    }
+    name = name + ' ' + currentString[j];
+  }
+  return [name, j];
+}
+function findName(currentString, i){
+  //This will check how long the name is by finding the first section of the sentence that starts with zero.
+  //This hasn't been hard test but if need be I can add a second zero. I haven't seen a UPC that fills the entire 
+  //section with whole numbers.
+  //Returning the i and j will establish the locations of the string on the array.
+  var name = currentString[i]
+  for (var i = i + 1; i <= currentString.length; i++){
+    if (currentString[i].charAt(0) === '0' && currentString[i].charAt(1) === '0'){
+      return [name, i];
+    }
+    name = name + ' ' + currentString[i];
+  }
+}
+
+function itemStartCheck(currentString, i){
+  if (currentString.length <= i + 3){return false;}         //Checks if the string ends before the word can start
+  if (containsLetter(currentString[i])){return false;}      //First number should be a number
+  if (containsLetter(currentString[i + 1])){return false;}  //Second number should be a number
+  if (containsNumber(currentString[i + 2].charAt(0))){
+    if (currentString[i + 2].charAt(2) === '-' || currentString[i + 2].charAt(1) === '-'){
+      return true;                                           //Third sections should have a dash as the third or second character.
+    }
+  }
+  return false;
+}
+
+function containsNumber(str) {
+  if (str === ''){return false;}
+  return /\d/.test(str); // Returns true if string contains a digit
+}
+
+function containsLetter(str) {
+  if (str === ''){return false;}
+  return /[a-zA-Z]/.test(str); // Returns true if string contains a letter
+}
