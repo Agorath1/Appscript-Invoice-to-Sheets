@@ -1,0 +1,161 @@
+function myFunction() {
+  var folder = DriveApp.getFolderById('');  // Manually enter folder ID
+  var files = folder.getFilesByType(MimeType.PDF);
+  
+  var sheetID = '';  // Manually enter sheet ID
+  var spreadSheet = SpreadsheetApp.openById(sheetID);
+  var sheet2 = spreadSheet.getSheetByName('Sheet2');
+  sheet2.clear();
+
+  while (files.hasNext()){
+    var file = files.next();
+    var blob = file.getBlob();
+    var resource = {
+      title: file.getName(),
+      mimeType: MimeType.GOOGLE_DOCS
+    };
+    var newDoc = Drive.Files.create(resource, blob);
+    var newDocId = newDoc.id;
+    dataTransfer(newDocId,sheetID)
+    splitText(sheetID)
+  }
+
+}
+
+function dataTransfer(docID, sheetID){
+
+  var doc = DocumentApp.openById(docID);
+  var text = doc.getBody().getText();
+
+  //var lineSplit = 'STORE 0415'
+  var lineSplit = '\n'
+  var lines = text.split(lineSplit);
+
+  var sheet = SpreadsheetApp.openById(sheetID).getActiveSheet();
+  sheet.clear()
+  
+  sheet.getRange(1, 1).setValue(lines.length) + 1;
+
+  for (var i = 0; i < lines.length; i++){
+    sheet.getRange(i + 2, 1).setValue(lines[i].trimStart());
+  }
+  // sheet.getRange(2, 1, lines.length + 1, 1).setValues([lines]);
+}
+
+function splitText(sheetID){
+
+  // Get the spreadsheet to store in a var along with the two main sheets stored in seperate var.
+  var spreadSheet = SpreadsheetApp.openById(sheetID);
+  var sheet = spreadSheet.getSheetByName('Sheet1');
+  var sheet2 = spreadSheet.getSheetByName('Sheet2');
+
+  //Clears the sheet for new data
+  sheet2.getRange('A1').setValue("QTY ORD")
+  sheet2.getRange('B1').setValue("QTY SHP")
+  sheet2.getRange('C1').setValue("Item Code")
+  sheet2.getRange('D1').setValue("Description")
+  sheet2.getRange('E1').setValue("Size")
+  sheet2.getRange('F1').setValue("UPC")
+  sheet2.getRange('G1').setValue("Pack Sz")
+  sheet2.getRange('H1').setValue("Total Cost")
+  sheet2.getRange('I1').setValue("PB")
+
+  //Gets the length of the rows previous stored in the A1 cell.
+  var sheetLength = sheet.getRange(1,1).getValue();
+  
+  //sheet2Row will the row count for sheet two.
+  var sheet2Row = 2;
+  while (sheet2.getRange(sheet2Row, 1).getValue() !== ''){
+    sheet2Row++;
+  }
+    
+
+  //Skipping the first row, loops through each row
+  for (var i = 2; i < sheetLength + 2; i++){
+
+    //Stores the cell in a var
+    var cellValue = sheet.getRange(i, 1).getValue();
+
+    //Splitting the text in the cell and storing them onto sheet 2.
+    var splitString = ' ';
+    var splitValue = cellValue.split(splitString);
+    
+    for (var k = 0; k + 3 < splitValue.length; k++){
+      if (itemStartCheck(splitValue, k)){
+        sheet2.getRange(sheet2Row, 1).setValue(splitValue[k]);                    //Ordered QTY
+        sheet2.getRange(sheet2Row, 2).setValue(splitValue[k + 1]);                //Delivered QTY
+        sheet2.getRange(sheet2Row, 3).setValue(splitValue[k + 2].split('-')[1]);  //Pastes item code
+        var itemName = findName(splitValue, k + 3);                               //Finds the name
+        k = itemName[1];
+        sheet2.getRange(sheet2Row, 4).setValue(itemName[0]);
+
+        //Pastes the product name and size. Determines if the second to last section before UPC
+        //is part of the name or part of the size.
+        sheet2.getRange(sheet2Row, 6).setValue(splitValue[k]);                    //Paste UPC
+
+        if (sheet2.getRange(sheet2Row, 2).getValue() === 0){
+          var itemName = findNameForOuts(splitValue, k + 1);
+          k = itemName[1]
+          sheet2.getRange(sheet2Row, 7).setValue(itemName[0]);
+        } else {
+          sheet2.getRange(sheet2Row, 7).setValue(splitValue[k + 6]);  // Pack Size
+          sheet2.getRange(sheet2Row, 8).setValue(splitValue[k + 7]);  //Total Value
+          if (splitValue[k + 9] == ("PB"))
+            sheet2.getRange(sheet2Row, 9).setValue(splitValue[k + 9]); // PB Check
+        }
+        sheet2Row++;
+        k = k + 3;
+      }
+    }
+    //sheet2.getRange(i - 1, 1, 1, splitValue.length).setValues([splitValue]);
+  }
+}
+function findNameForOuts(currentString, i){
+  //This will check how long the name is by finding the first section of the sentence that starts with zero.
+  //This hasn't been hard test but if need be I can add a second zero. I haven't seen a UPC that fills the entire 
+  //section with whole numbers.
+  //Returning the i and j will establish the locations of the string on the array.
+  var name = currentString[i]
+  for (var j = i + 1; j < currentString.length; j++){
+    if (containsNumber(currentString[j])){
+      return [name, j];
+    }
+    name = name + ' ' + currentString[j];
+  }
+  return [name, j];
+}
+function findName(currentString, i){
+  //This will check how long the name is by finding the first section of the sentence that starts with zero.
+  //This hasn't been hard test but if need be I can add a second zero. I haven't seen a UPC that fills the entire 
+  //section with whole numbers.
+  //Returning the i and j will establish the locations of the string on the array.
+  var name = currentString[i]
+  for (var i = i + 1; i <= currentString.length; i++){
+    if (currentString[i].charAt(0) === '0' && currentString[i].charAt(1) === '0'){
+      return [name, i];
+    }
+    name = name + ' ' + currentString[i];
+  }
+}
+
+function itemStartCheck(currentString, i){
+  if (currentString.length <= i + 3){return false;}         //Checks if the string ends before the word can start
+  if (containsLetter(currentString[i])){return false;}      //First number should be a number
+  if (containsLetter(currentString[i + 1])){return false;}  //Second number should be a number
+  if (containsNumber(currentString[i + 2].charAt(0))){
+    if (currentString[i + 2].charAt(2) === '-' || currentString[i + 2].charAt(1) === '-'){
+      return true;                                           //Third sections should have a dash as the third or second character.
+    }
+  }
+  return false;
+}
+
+function containsNumber(str) {
+  if (str === ''){return false;}
+  return /\d/.test(str); // Returns true if string contains a digit
+}
+
+function containsLetter(str) {
+  if (str === ''){return false;}
+  return /[a-zA-Z]/.test(str); // Returns true if string contains a letter
+}
