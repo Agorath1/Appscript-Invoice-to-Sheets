@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+  </head>
+  <body>
+    <div id="fileList"></div>
+    <button onclick="submitSelection()">Submit</button>
+    <script>
+      var folder_id = "<?= folder_id ?>"
+      google.script.run.withSuccessHandler(display_files).getFilesInFolder(folder_id)
+
+      function display_files(file_array){
+        var file_list_div = document.getElementById('fileList');
+        file_list_div .innerHTML = '';
+
+        file_array.forEach(function(file){
+          var file_element = document.createElement('div');
+          file_element.innerHTML = '<input type="radio" name="file" value="' + file.id + '">' + file.name + '<br>';
+          file_list_div.appendChild(file_element);
+        });
+      }
+      
+      function submitSelection(){
+        var selectedFile = document.querySelector('input[name="file"]:checked');
+        if (selectedFile){
+          google.script.run.processSelectedFile(selectedFile.value);
+          google.script.host.close();
+        } else {
+          alert("Please select a file.");
+        }
+      }
+    </script>
+  </body>
+</html>
