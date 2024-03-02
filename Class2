@@ -1,0 +1,208 @@
+class Invoice{
+  constructor(){
+    this.store = 0;
+    this.delv_date = "";
+    this.invoice = 0;
+    this.pages = 0;
+    this.items = [];
+    this.dept = 0;
+  }
+
+  add_item(item){
+    this.items.push(item)
+  }
+
+  invoice_array () {
+    let data = []
+    for (i = 0; i < this.items.length; i++) {
+      data.push([
+        this.store,
+        this.dept,
+        this.dept_name(),
+        this.delv_date,
+        this.invoice,
+        this.items[i].qty_ord,
+        this.items[i].qty_shp,
+        this.items[i].item_code,
+        this.items[i].description,
+        this.items[i].upc,
+        this.items[i].awg_sell,
+        this.items[i].total_allow,
+        this.items[i].net_cost(),
+        this.items[i].pack,
+        this.items[i].ext_net_cost,
+        this.items[i].freight,
+        this.items[i].weight,
+        this.items[i].pb
+      ])
+    }
+    return data
+  }
+
+  totals_array () {
+    let data = [
+      this.store,
+      this.dept,
+      this.dept_name(),
+      this.delv_date,
+      this.invoice,
+      this.pages,
+      0,
+      0,
+      0
+    ]
+    for (i = 0; i < this.items.length; i++) {
+      data[6] += this.items[i].qty_ord;
+      data[7] += this.items[i].qty_shp;
+
+      if (is_only_numbers(this.items[i].ext_net_cost)) {
+        data[8] += this.items[i].ext_net_cost;
+      }
+    }
+  return [data]
+  }
+
+  dept_name () {
+    const name_list = {
+      10: "Grocery",
+      11: "Supplies",
+      15: "Cigarettes",
+      16: "Tobacco",
+      20: "Dairy",
+      30: "Frozen",
+      31: "Ice Cream",
+      40: "Fresh Meat",
+      41: "Processed Meat",
+      42: "Frozen Meat",
+      43: "Seafood",
+      45: "Deli",
+      46: "Bakery",
+      50: "Produce",
+      51: "Floral",
+      60: "GM",
+      61: "HBC",
+      62: "SF",
+      63: "SF"
+    }
+    try{
+      var name = name_list[this.dept]
+      return name
+    } catch {
+      return this.dept
+    }
+  }
+}
+
+class Item {
+  constructor(){
+    this.item_code = 0;
+    this.upc = 0;
+    this.description = "";
+    this.pack = 0;
+    this.awg_sell = 0;
+    this.dept = 0;
+  }
+}
+
+class InvoiceItem extends Item {
+  constructor() {
+    super()
+    this.qty_ord = 0
+    this.qty_shp = 0
+    this.total_allow = 0
+    this.ext_net_cost = 0
+    this.freight = 0
+    this.weight = 0
+    this.pb = ""
+  }
+
+  net_cost () {
+    return Number(this.awg_sell) + Number(this.total_allow) + Number(this.freight)
+  }
+
+  all_cost () {
+    return this.net_cost() * this.qty_shp
+  }
+  
+  all_freight () {
+    return this.freight * this.qty_shp
+  }
+
+  all_allowance () {
+    return this.total_allow * this.qty_shp
+  }
+}
+
+class PrebookItems extends Item {
+  constructor(store="",	pgm_central_id="", dept="", upc="",	fwhs="",	item_code="",	description="", size="", pack="", weight="", awg_sell="", deal="", eba="", act_cost="", shipper="", qty="", date="", weighted="", brkr_cd="", unauth="", division="", adm="") {
+    super(item_code, upc, description, pack, awg_sell, dept)
+    this.store = Number(store);
+    this.pgm_central_id = pgm_central_id;
+    this.fwhs = fwhs;
+    this.size = size;
+    this.weight = Number(weight);
+    this.deal = Number(deal);
+    this.eba = Number(eba);
+    this.act_cost = Number(act_cost);
+    this.shipper = shipper;
+    this.qty = Number(qty);
+    this.date = date;
+    this.weighted = weighted;
+    this. brkr_cd = brkr_cd;
+    this.unauth = unauth;
+    this.division = division;
+    this.adm = adm;
+  }
+}
+
+class InvoiceColumns {
+  constructor () {
+    this.col_des = [
+      "STORE",
+      "DEPT", 
+      "DEPT NAME", 
+      "DELV DT", 
+      "INVOICE", 
+      "QTY ORD", 
+      "QTY SHP", 
+      "ITEM #", 
+      "DESCRIPTION", 
+      "PRODUCT UPC", 
+      "AWGSELL",
+      "TOTAL ALLOW",
+      "NET COST", 
+      "PACK", 
+      "EXT NT COST", 
+      "FREIGHT",
+      "TOTAL WEIGHT",
+      "PB"
+    ];
+    this.col_total = [
+      "STORE",
+      "DEPT", 
+      "DEPT NAME", 
+      "DEL DT", 
+      "INVOICE", 
+      "PAGE", 
+      "QTY ORD", 
+      "QTY SHP", 
+      "NET COST"
+    ];
+    // this.tracker_spread = SpreadsheetApp.getActiveSheet()
+    this.tracker_spread = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Variables")
+
+    this.invoice_folder_id = tracker_spread.getRange('B2').getValue()
+    this.excel_folder_id = tracker_spread.getRange('B1').getValue()
+    this.spreadsheetPBID = tracker_spread.getRange('B3').getValue()
+  }
+}
+
+
+
+
+
+
+
+
+
+
