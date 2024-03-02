@@ -1,153 +1,46 @@
-function start() {
-  // Runs the main myFunction function
-  storefront_invoice_pdf_to_excel();
-}
+// Globals
+var col_des = ["STORE",
+              "DEPT", 
+              "DEPT NAME", 
+              "DELV DT", 
+              "INVOICE", 
+              "PAGE", 
+              "QTY ORD", 
+              "QTY SHP", 
+              "ITEM #", 
+              "DESCRIPTION", 
+              "PRODUCT UPC", 
+              "AWGSELL",
+              "TOTAL ALLOW",
+              "NET COST", 
+              "PACK", 
+              "EXT NT COST", 
+              "FREIGHT",
+              "TOTAL WEIGHT",
+              "PB"];
 
+var col_total = ["STORE",
+              "DEPT", 
+              "DEPT NAME", 
+              "DEL DT", 
+              "INVOICE", 
+              "PAGE", 
+              "QTY ORD", 
+              "QTY SHP", 
+              "NET COST"];
 
-function get_invoice_sheet(spreadsheetID) {
-// Gets the spreadsheet for the invoice sheet program
-  // Store spreadsheet for main spreadsheet
-  try {
-    var spreadSheet = SpreadsheetApp.openById(spreadsheetID);
-  } catch (error) {
-    Logger.log("Error: Spreadsheet with ID '" + spreadsheetID + "' not found or inaccessible.");
-  }
-  return spreadSheet;
-}
+const tracker_spread = SpreadsheetApp.getActiveSheet()
 
-function column_num_to_letter(col){
-  let letter = '';
-  let temp;
-
-  while (col > 0) {
-    temp = (col - 1) % 26;
-    letter = String.fromCharCode(temp + 65) + letter;
-    col = (col - temp - 1) / 26
-  }
-  return letter
-}
-
-function last_row(sheet, col_letter){
-  const last_row = sheet.getLastRow();
-  const column = sheet.getRange(col_letter + ":" + col_letter + last_row);
-  const values = column.getValues
-
-  for (i = values.length - 1; i >= 0; i--){
-    if (values[1][0] !== "") {return i}
-  }
-}
-
-function get_data(docID){
-  // Get data from doc
-  // Opens the document
-  var doc = DocumentApp.openById(docID);
-  
-  // Grabs everything
-  var text = doc.getBody().getText();
-
-  text = text.replace(/\s+/g, ' ');
-  text = text.trim();
-  text = text.split(" ");
-
-  return text;
-}
-
-function paste_top_row(col_des, sheet){
-  // Pastes top row into sheet
-  sheet.getRange(1, 1, 1, col_des.length).setValues([col_des])
-}
-
-function is_only_numbers(text){
-  // Checks if string contains only numbers.
-  return /^\d+$/.test(text);
-}
-
-function is_only_letters(text){
-  // Checks if it only contains letters
-  return /^[a-zA-Z\/:]+$/.test(text);
-}
-
-function contains(text, character) {
-  if (text.indexOf(character) !== -1) {return true}
-  return false
-}
-
-
-function is_upc(text){
-  if (text.charAt(0) === "0" && text.charAt(1) === "0"){
-    return true
-  }
-  return false
-}
-
-function is_item(text_items){
-  // Finds the next item on the invoice
-  if (!is_only_numbers(text_items[0])) {return false} 
-  if (!is_only_numbers(text_items[1])) {return false} 
-  if ((text_items[2].charAt(2) === "-" || text_items[2].charAt(1) === "-" )){return true}
-  return false
-}
-
-function create_new_spreadsheet(){
-  const new_sheet = SpreadsheetApp.create("Invoice" + Date.now())
-  const sheet = new_sheet.getSheets()[0]
-  sheet.setName("Main")
-  new_sheet.insertSheet("Totals")
-  return new_sheet
-}
-
-function move_file(file_id, folder_id) {
-  const folder = DriveApp.getFolderById(folder_id);
-  const file = DriveApp.getFileById(file_id);
-
-  const parents = file.getParents();
-  while (parents.hasNext()) {
-    var parent = parents.next();
-    parent.removeFile(file);
-  }
-
-  folder.addFile(file);
-}
+const invoice_folder_id = tracker_spread.getRange('B2').getValue()
+const excel_folder_id = tracker_spread.getRange('B1').getValue()
 
 function storefront_invoice_pdf_to_excel() {
 
-  // Globals
-  var col_des = ["STORE",
-                "DEPT", 
-                "DEPT NAME", 
-                "DELV DT", 
-                "INVOICE", 
-                "PAGE", 
-                "QTY ORD", 
-                "QTY SHP", 
-                "ITEM #", 
-                "DESCRIPTION", 
-                "PRODUCT UPC", 
-                "AWGSELL",
-                "TOTAL ALLOW",
-                "NET COST", 
-                "PACK", 
-                "EXT NT COST", 
-                "FREIGHT",
-                "TOTAL WEIGHT",
-                "PB"];
-  var col_total = ["STORE",
-                "DEPT", 
-                "DEPT NAME", 
-                "DEL DT", 
-                "INVOICE", 
-                "PAGE", 
-                "QTY ORD", 
-                "QTY SHP", 
-                "NET COST"];
-  
   const sheet_name = 'Main';
   const sheet_total_name = 'Totals';
-  var invoice_folder_id = '1nTdhCsdEKZmS8QBucbLdZurHCmdJV3Ra';
-  const excel_folder_id = '1jA_iJoT6CZLS8yw_5-R_puLKkh4X1rC1';
 
   // Get the main spreadsheet
-  const spreadsheetmain = create_new_spreadsheet();
+  const spreadsheetmain = create_new_spreadsheet("Invoice" + Date.now(), [sheet_name, sheet_total_name]);
   if (spreadsheetmain === undefined) {return;}
   move_file(spreadsheetmain.getId(), excel_folder_id)
 
@@ -288,7 +181,7 @@ function storefront_invoice_pdf_to_excel() {
       if (is_only_letters(text[text_index])){
         while (true){
           if (!is_only_letters(text[text_index + i])){break};
-          if (text[text_index + i] === "ASSOCIATED" || text[text_index + i] === "VALU"){break};
+          if (text[text_index + i] === "ASSOCIATED" || text[text_index + i] === "VALU" || text[text_index + i] === "PB"){break};
           i++;
         }
         data_row[col_des.indexOf("EXT NT COST")] = text.slice(text_index, text_index + i).join(" ");
@@ -381,4 +274,6 @@ function storefront_invoice_pdf_to_excel() {
   sheet.getRange(2, 1, data.length, col_des.length).setValues(data)
   sheet_total.getRange(2, 1, total_data.length, col_total.length).setValues(total_data)
   spreadsheetmain.setName("Invoice " + Utilities.formatDate(new Date(data[1][3]), "UTC", "YYMMdd"))
+  formatsheet(sheet)
+  formatsheet(sheet_total)
 }
