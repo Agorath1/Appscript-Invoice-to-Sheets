@@ -1,6 +1,6 @@
 function excel_invoices() {
-  // var files = getFilesInFolder('1jA_iJoT6CZLS8yw_5-R_puLKkh4X1rC1')
-  var files = getFilesInFolder(excel_folder_id)
+  let glob = new InvoiceColumns()
+  var files = getFilesInFolder(glob.excel_folder_id)
   var main_sheet = SpreadsheetApp.getActiveSheet
   row = main_sheet.getMaxRow()
   col = main_sheet.getMaxColumn()
@@ -8,18 +8,18 @@ function excel_invoices() {
 }
 
 function showDialog(){
-  // var folder_id = '1jA_iJoT6CZLS8yw_5-R_puLKkh4X1rC1'
-  var folder_id = excel_folder_id
+  let glob = new InvoiceColumns()
+  glob.log_sheet.clear()
+  var folder_id = glob.excel_folder_id
+  sheet_log(glob.log_sheet, "Selecting folder id: " + folder_id)
+  var files = getFilesInFolder(glob.excel_folder_id)
+  sheet_log(glob.log_sheet, "Sheets in folder: " + files.length)
   var template = HtmlService.createTemplateFromFile('ui');
   template.folder_id = folder_id;
   var html = template.evaluate()
     .setWidth(400)
     .setHeight(300);
   SpreadsheetApp.getUi().showModalDialog(html, 'Select File')
-}
-
-function test(){
-  getFilesInFolder('1jA_iJoT6CZLS8yw_5-R_puLKkh4X1rC1')
 }
 
 function updateSidebar(content) {
@@ -30,9 +30,7 @@ function updateSidebar(content) {
 }
 
 function processSelectedFile(file_id){
-  msg = invoice_to_pb2(file_id)
-  
-  SpreadsheetApp.getUi().alert(msg)
+  invoice_to_pb2(file_id)
 }
 
 function onOpen(e) {
@@ -47,7 +45,4 @@ function onOpen(e) {
       .addToUi();
 }
 
-function showFeedbackDialog() {
- var widget = HtmlService.createHtmlOutput("<h1>Enter feedback</h1>");
- SpreadsheetApp.getUi().showModalDialog(widget, "Send feedback");
-}
+
