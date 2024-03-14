@@ -1,0 +1,370 @@
+class Invoice{
+  constructor(){
+    this.store = 0;
+    this.delv_date = "";
+    this.invoice = 0;
+    this.pages = 0;
+    this.items = [];
+    this.dept = 0;
+  }
+
+  add_item(item){
+    this.items.push(item)
+  }
+
+  invoice_array () {
+    let data = []
+    for (i = 0; i < this.items.length; i++) {
+      if (Number(this.items[i].weight === 0)) {this.items[i].weight = ""}
+      data.push([
+        this.store,
+        this.dept,
+        this.dept_name(),
+        this.delv_date,
+        this.invoice,
+        this.items[i].qty_ord,
+        this.items[i].qty_shp,
+        this.items[i].item_code,
+        this.items[i].description,
+        this.items[i].size,
+        this.items[i].upc,
+        this.items[i].awg_sell,
+        this.items[i].total_allow,
+        this.items[i].net_cost(),
+        this.items[i].pack,
+        this.items[i].ext_net_cost,
+        this.items[i].freight,
+        this.items[i].weight,
+        this.items[i].pb
+      ])
+    }
+    return data
+  }
+
+  totals_array () {
+    let data = [
+      this.store,
+      this.dept,
+      this.dept_name(),
+      this.delv_date,
+      this.invoice,
+      this.pages,
+      0,
+      0,
+      0
+    ]
+    for (i = 0; i < this.items.length; i++) {
+      data[6] += this.items[i].qty_ord;
+      data[7] += this.items[i].qty_shp;
+
+      if (is_only_numbers(this.items[i].ext_net_cost)) {
+        data[8] += this.items[i].ext_net_cost;
+      }
+    }
+  return [data]
+  }
+
+  dept_name () {
+    const name_list = {
+      10: "Grocery",
+      11: "Supplies",
+      15: "Cigarettes",
+      16: "Tobacco",
+      20: "Dairy",
+      30: "Frozen",
+      31: "Ice Cream",
+      40: "Fresh Meat",
+      41: "Processed Meat",
+      42: "Frozen Meat",
+      43: "Seafood",
+      45: "Deli",
+      46: "Bakery",
+      50: "Produce",
+      51: "Floral",
+      60: "GM",
+      61: "HBC",
+      62: "SF",
+      63: "SF"
+    }
+    try{
+      var name = name_list[this.dept]
+      return name
+    } catch {
+      return this.dept
+    }
+  }
+}
+
+class Item {
+  constructor(){
+    this.item_code = 0;
+    this.upc = 0;
+    this.description = "";
+    this.pack = 0;
+    this.awg_sell = 0;
+    this.dept = 0;
+    this.size = "";
+  }
+}
+
+class InvoiceItem extends Item {
+  constructor() {
+    super()
+    this.qty_ord = 0
+    this.qty_shp = 0
+    this.total_allow = 0
+    this.ext_net_cost = 0
+    this.freight = 0
+    this.weight = 0
+    this.pb = ""
+  }
+
+  net_cost () {
+    return Number(this.awg_sell) + Number(this.total_allow) + Number(this.freight)
+  }
+
+  all_cost () {
+    return this.net_cost() * this.qty_shp
+  }
+  
+  all_freight () {
+    return this.freight * this.qty_shp
+  }
+
+  all_allowance () {
+    return this.total_allow * this.qty_shp
+  }
+}
+
+class PrebookItems extends Item {
+  constructor() {
+    super()
+    this.store = 0;
+    this.pgm_central_id = "";
+    this.fwhs = "";
+    this.size = "";
+    this.weight = 0;
+    this.deal = 0;
+    this.eba = 0;
+    this.act_cost = 0;
+    this.shipper = "";
+    this.qty = 0;
+    this.date = "";
+    this.weighted = "";
+    this.brkr_cd = "";
+    this.unauth = "";
+    this.division = "";
+    this.adm = "";
+    this.ext_net_cost = 0;
+    this.freight = 0;
+  }
+  
+  weighted () {
+    if (this.weight !== 0 && this.weight !== ""){
+      return "Y"
+    }
+  }
+  
+  net_cost () {
+    if (is_only_numbers(this.awg_sell)) {
+      return Number(this.awg_sell) + Number(this.deal)
+    }
+    return 0
+  }
+
+  get_array_pb_short(row){
+    let pb_array = [
+      this.qty,
+      '=if(isnumber(Z' + row + '),if(R' + row + '<>"",Z' + row + '/Y' + row + ',Z' + row + '/(P' + row + '*I' + row + ')),"")',
+      this.weight,
+      this.ext_net_cost,
+      '=if(isnumber(Z' + row + '),ROUND(if(R' + row + '="Y",(N' + row + '+ROUND(AC' + row + ',4))*Y' + row + 
+      ',(N' + row + '+ROUND(AC' + row + ',2))*W' + row + '),2),"")',
+      '=if(isnumber(Z' + row + '),AA' + row + '-Z' + row + ',"")',
+      this.freight
+    ]
+    return pb_array
+  }
+
+  get_arrary_pb_full (row){
+    if (this.weight === 0) {this.weight = ""}
+    let pb_array = [
+      this.store,
+      this.pgm_central_id,
+      this.dept,
+      this.upc,
+      this.fwhs,
+      this.item_code,
+      this.description,
+      this.size,
+      this.pack,
+      this.weight,
+      this.awg_sell,
+      this.deal,
+      this.eba,
+      this.net_cost(),
+      this.shipper,
+      this.qty,
+      this.date,
+      this.weighted,
+      this.brkr_cd = "",
+      this.unauth = "",
+      this.division = "",
+      this.adm = ""
+    ]
+  return pb_array.concat(this.get_array_pb_short(row))
+  }
+}
+
+class InvoiceColumns {
+  constructor () {
+    this.col_des = [
+      "STORE",
+      "DEPT", 
+      "DEPT NAME", 
+      "DELV DT", 
+      "INVOICE", 
+      "QTY ORD", 
+      "QTY SHP", 
+      "ITEM #", 
+      "DESCRIPTION", 
+      "SIZE",
+      "PRODUCT UPC", 
+      "AWGSELL",
+      "TOTAL ALLOW",
+      "NET COST", 
+      "PACK", 
+      "EXT NT COST", 
+      "FREIGHT",
+      "TOTAL WEIGHT",
+      "PB"
+    ];
+    this.col_total = [
+      "STORE",
+      "DEPT", 
+      "DEPT NAME", 
+      "DEL DT", 
+      "INVOICE", 
+      "PAGE", 
+      "QTY ORD", 
+      "QTY SHP", 
+      "NET COST"
+    ];
+    this.tracker_spread = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Variables")
+    this.log_sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Log")
+
+    this.invoice_folder_id = this.tracker_spread.getRange('B2').getValue()
+    this.excel_folder_id = this.tracker_spread.getRange('B1').getValue()
+    this.spreadsheetPBID = this.tracker_spread.getRange('B3').getValue()
+    this.item_catalog_folder = this.tracker_spread.getRange('B6').getDisplayValue()
+  }
+}
+
+class SheetManager{
+  constructor (sheet, col_list=null) {
+    this.sheet = sheet
+    this.col_list = col_list
+    if (this.col_list === null){
+      this.col_list = sheet.getRange(1, 1, 1, sheet.getRange("1:1").getLastColumn()).getValues()[0]
+    } else {
+      this.set_col_names()
+    }
+    this.width = this.sheet.getRange("1:1").getLastColumn();
+    this.length = this.sheet.getRange("A:A").getLastRow();
+    while (true){
+      if (this.sheet.getRange(this.length, 1).getValue() === ""){
+        this.length -= 1;
+      } else {
+        break;
+      }
+    }
+  }
+
+  get_index(col_name){
+    return this.col_list.indexOf(col_name)
+  }
+  
+  set_col_names(){
+    this.sheet.getRange(1, 1, 1, this.col_list.length).set_values(col_list)
+  }
+
+  set_value(row, col, value) {
+    this.sheet.getRange(row, col).setValue(value)
+  }
+
+  set_values(row, col, values){
+    this.sheet.getRange(row, col, values.length, values[0].length).setValues(values)
+  }
+
+  get_row_values(row, col){
+    return this.sheet.getRange(row, col, 1, this.width).getDisplayValues()
+  }
+
+  get_column_values(col){
+    if (is_only_numbers(col)){
+      col = column_num_to_letter(col)
+    }
+    return(this.sheet.getRange(col + "2:" + col + String(this.length)).getDisplayValues().map(sub_array => sub_array[0]))
+  }
+
+  get_all_data () {
+    return this.sheet.getRange(1, 1, this.sheet.getLastRow(), this.sheet.getLastColumn()).getDisplayValues()
+  }
+
+  get_pb_row(item_code, date_shipped) {
+    let row = 0
+    let row_add = 2
+    while (true){
+      let row_array = this.get_column_values(this.get_index("DELIV DT") + 1).slice(row_add - 2)
+      let row_array2 = this.get_column_values(this.get_index("ITEM CD") + 1).slice(row_add - 2)
+      let row = row_array.indexOf(date_shipped)
+      let row2 = row_array2.indexOf(item_code)
+      if (row === row2){return row + row_add}
+      if (row === -1 || row2 === -1){return -1}
+      if (row > row2){
+        row_add += row
+      } else {
+        row_add += row2
+      }
+    }
+  }
+
+  /**
+   * Formats the sheet by creating a filter and resizing columns. Optionally able to sort columns. sort_col is the column number or letter and asc the the ascending or desceding order. It is default to ascending with a boolean of true.
+   * 
+   * @param {String} sort_col
+   * @param {Boolean} asc
+   * @return {null}
+   */
+  format(sort_col="", asc=true) {
+    row = this.sheet.getLastRow();
+    while (true){
+      if (this.sheet.getRange(row, 1).getValue() === ""){
+        row -= 1;
+      } else {
+        break;
+      }
+    }
+
+    col = this.sheet.getLastColumn();
+    while (true){
+      if (this.sheet.getRange(1, col).getValue() === ""){
+        col -= 1;
+      } else {
+        break;
+      }
+    }
+    
+    sheet.getRange(1, 1, row, col).createFilter();
+    sheet.autoResizeColumns(1, col);
+    if (sort_col !== 0 && sort_col !== "") {this.sheet.getFilter().sort(sort_col, asc)}
+  }
+}
+
+
+
+
+
+
+
+
