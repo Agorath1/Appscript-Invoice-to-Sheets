@@ -4,11 +4,11 @@
     <base target="_top">
   </head>
   <body>
-    <div id="fileList"></div>
     <button onclick="submitSelection()">Submit</button>
+    <div id="fileList"></div>
     <script>
       var folder_id = "<?= folder_id ?>"
-      google.script.run.withSuccessHandler(display_files).getFilesInFolder(folder_id)
+      google.script.run.withSuccessHandler(display_files).getFilesInFolder(folder_id);
 
       function display_files(file_array){
         var file_list_div = document.getElementById('fileList');
